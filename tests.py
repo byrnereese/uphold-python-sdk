@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
-from unittest import TestCase, main, skip
-from mock import Mock, patch
+
 from decimal import Decimal
+from unittest import TestCase, main, skip
+
+from mock import Mock, patch
 
 from uphold import Uphold
 
@@ -13,6 +15,7 @@ class FakeResponse(object):
 
 
 class TestAuthentication(TestCase):
+
     def setUp(self):
         pass
 
@@ -21,6 +24,7 @@ class TestAuthentication(TestCase):
 
 
 class TestCurrencies(TestCase):
+
     def setUp(self):
         pass
 
@@ -29,6 +33,7 @@ class TestCurrencies(TestCase):
 
 
 class TestTicker(TestCase):
+
     def setUp(self):
         pass
 
@@ -37,6 +42,7 @@ class TestTicker(TestCase):
 
 
 class TestCard(TestCase):
+
     def setUp(self):
         pass
 
@@ -45,6 +51,7 @@ class TestCard(TestCase):
 
 
 class TestContact(TestCase):
+
     def setUp(self):
         pass
 
@@ -53,6 +60,7 @@ class TestContact(TestCase):
 
 
 class TestCurrencyPair(TestCase):
+
     def setUp(self):
         pass
 
@@ -106,13 +114,15 @@ fake_transaction_response.text = '''{
   }
 }'''
 
-    
+
 class TestTransaction(TestCase):
+
     def setUp(self):
         self.api = Bitreserve()
         #self.api.auth('user', 'password')
 
-    @patch('requests.Session.post', Mock(return_value=fake_transaction_response))
+    @patch('requests.Session.post', Mock(
+        return_value=fake_transaction_response))
     def test_prepare_txn(self):
         res = self.api.prepare_txn(
             '66cf2c86-8247-4094-bbec-ca29cea8220f',
@@ -122,7 +132,8 @@ class TestTransaction(TestCase):
         )
         self.assertEqual(res, '7c377eba-cb1e-45a2-8c13-9807b4139bec')
 
-    @patch('requests.Session.post', Mock(return_value=fake_transaction_response))
+    @patch('requests.Session.post', Mock(
+        return_value=fake_transaction_response))
     def test_execute_txn(self):
         res = self.api.execute_txn(
             '66cf2c86-8247-4094-bbec-ca29cea8220f',
@@ -130,8 +141,9 @@ class TestTransaction(TestCase):
         )
         self.assertEqual(res['id'], '7c377eba-cb1e-45a2-8c13-9807b4139bec')
 
-        
+
 class TestUser(TestCase):
+
     def setUp(self):
         pass
 

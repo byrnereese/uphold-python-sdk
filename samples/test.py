@@ -1,22 +1,25 @@
 from __future__ import print_function, unicode_literals
 
-import urllib3
 import locale
-try:
-    from configparser import ConfigParser
-except:
-    from ConfigParser import ConfigParser
 import sys
 
-sys.path.append('.')
+import urllib3
+
 from uphold import *
 
+try:
+    from configparser import ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
+
+
+sys.path.append('.')
 locale.setlocale(locale.LC_ALL, 'en_US')
 Config = ConfigParser()
 Config.read('samples/config.ini')
 
 api = Uphold()
-api.auth_pat( Config.get('Settings','pat') )
+api.auth_pat(Config.get('Settings', 'pat'))
 
 print("Getting user data...")
 me = api.get_me()
@@ -31,13 +34,14 @@ for card in cards:
 card_id = cards[0]['id']
 
 print("\nGetting card labeled '" + cards[0]['label'] + "'")
-card = api.get_card( cards[0]['id'] )
+card = api.get_card(cards[0]['id'])
 print("Available balance: " + card['available'])
 
 print("\nGetting contacts...")
 contacts = api.get_contacts()
 for contact in contacts:
-    if contact and contact['firstName'] is not None and contact['lastName'] is not None: 
+    if contact and contact['firstName'] is not None and contact[
+            'lastName'] is not None:
         print(contact['firstName'] + " " + contact['lastName'])
 
 print("\nGetting phones...")
@@ -56,10 +60,24 @@ for entry in entries:
     i += 1
     if i > 20:
         break
-    if entry["in"]: 
-        print(str(i) + ". " + entry['type'] + ": +" + entry["in"]["amount"] + " " + entry["in"]["currency"])
-    if entry["out"]: 
-        print(str(i) + ". " + entry['type'] + ": -" + entry["in"]["amount"] + " " + entry["in"]["currency"])
+    if entry["in"]:
+        print(
+            str(i) +
+            ". " +
+            entry['type'] +
+            ": +" +
+            entry["in"]["amount"] +
+            " " +
+            entry["in"]["currency"])
+    if entry["out"]:
+        print(
+            str(i) +
+            ". " +
+            entry['type'] +
+            ": -" +
+            entry["in"]["amount"] +
+            " " +
+            entry["in"]["currency"])
 
 print("\nGetting transactions (first 20 entries)...")
 entries = api.get_reserve_chain()
@@ -68,11 +86,19 @@ for entry in entries:
     i += 1
     if i > 20:
         break
-    print(str(i) + ". " + entry['origin']['amount'] + " " + entry["origin"]["currency"] + " => " + entry['destination']['amount'] + " " + entry["destination"]["currency"])
+    print(
+        str(i) +
+        ". " +
+        entry['origin']['amount'] +
+        " " +
+        entry["origin"]["currency"] +
+        " => " +
+        entry['destination']['amount'] +
+        " " +
+        entry["destination"]["currency"])
 
 print("\nGetting all tickers...")
 tic = api.get_ticker()
 print("ok.")
 
 exit(0)
-

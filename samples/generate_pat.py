@@ -1,20 +1,22 @@
 from __future__ import print_function, unicode_literals
 
-import urllib3
 import getpass
 import sys
 
-sys.path.append('.')
+import urllib3
+
 from uphold import *
+
+sys.path.append('.')
 
 #input('You are about to generate a persistent Personal Access Token on Uphold. Press ENTER to continue. ')
 
-un   = input("Uphold username: ").rstrip()
-pw   = getpass.getpass("Uphold password: ").rstrip()
+un = input("Uphold username: ").rstrip()
+pw = getpass.getpass("Uphold password: ").rstrip()
 desc = input("Label/description for PAT (optional): ").rstrip()
 
-api  = Uphold(True)
-api.auth_basic( un, pw )
+api = Uphold(True)
+api.auth_basic(un, pw)
 
 pat = None
 
@@ -30,7 +32,7 @@ except uphold.VerificationRequired as e:
         print("Error again: " + repr(e2))
 except Exception as e:
     print("An unexpected error occurred: " + repr(e))
-    exit(0);
+    exit(0)
 
 if pat is not None:
     print("Your PAT is: " + pat)
@@ -38,4 +40,3 @@ else:
     print("Failed to generate PAT")
 
 exit(0)
-
