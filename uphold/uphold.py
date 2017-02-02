@@ -19,55 +19,60 @@ url = 'https://api.uphold.com/v1/reserve/transactions/a97bb994-6e24-4a89-b653-e0
 
 from __future__ import print_function, unicode_literals
 
-import urllib3
-import requests
 import json
-import ssl
+
+import requests
+
 from .version import __version__
 
-class VerificationRequired(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
 
-class RateLimitError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+class BaseUpholdException(Exception):
+    pass
+
+
+class VerificationRequired(BaseUpholdException):
+    pass
+
+
+class RateLimitError(BaseUpholdException):
+    pass
+
 
 class NotSupportedInProduction(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+    pass
+
+
+class UpholdApiError(Exception):
+    pass
+
 
 class Uphold(object):
     """
     Use this SDK to simplify interaction with the Uphold API
     """
-    
+
     def __init__(self, sandbox=False):
         if sandbox:
             self.host = 'api-sandbox.uphold.com'
         else:
             self.host = 'api.uphold.com'
         self.in_sandbox = sandbox
-        self.debug   = False
+        self.debug = False
         self.version = 0
         self.session = requests.Session()
+        self.username = None
+        self.password = None
         self.headers = {
             'Content-type': 'application/x-www-form-urlencoded',
             'User-Agent': 'uphold-python-sdk/' + __version__
-            }
+        }
         self.pat = None
         self.otp = None
 
     def _debug(self, s):
         if self.debug:
             print(s)
-        
+
     def verification_code(self, code):
         self.otp = code
 
@@ -75,20 +80,20 @@ class Uphold(object):
         """
         Authenticates against the Uphold backend using a username and password. Uphold
         return an User Auth Token, which is persisted for the life of the session.
-        
+
         :param String username An Uphold username or email address.
-        
+
         :param String password The password corresponding to the specified username.
-        
+
         """
         self.username = username
         self.password = password
         self.pat = None
-        
+
     def auth_pat(self, pat):
         """
         Sets the authentication method to PAT, or "Personal Access Token." Before calling this
-        method, a PAT needs to be created using the create_path() method. 
+        method, a PAT needs to be created using the create_path() method.
 
         :param String pat The personal access token
 
@@ -102,7 +107,7 @@ class Uphold(object):
         Creates a personal access token.
 
         :param String desc A description for the token
-        
+
         :rtype:
           A string representing the Personal Access Token
         """
@@ -152,7 +157,13 @@ class Uphold(object):
         """
         return self._get('/me/contacts/{}'.format(contact))
 
-    def create_contact(self, first_name, last_name, company, emails=[], bitcoin_addresses=[]):
+    def create_contact(
+            self,
+            first_name,
+            last_name,
+            company,
+            emails=[],
+            bitcoin_addresses=[]):
         fields = {
             'firstName': first_name,
             'lastName': last_name,
@@ -266,7 +277,13 @@ class Uphold(object):
             'destination': to
         }
         data = self._post('/me/cards/' + card + '/transactions', fields)
-        return data['id']
+        try:
+            return data['id']
+        except KeyError:
+            msg = 'Transaction was not created, please check your input.' \
+                  ' API returned {}'.format(data)
+            self._debug(msg)
+            raise UpholdApiError(msg)
 
     def execute_txn(self, card, transaction, message=''):
         """
@@ -286,7 +303,13 @@ class Uphold(object):
         fields = {}
         if message:
             fields['message'] = message
-        return self._post('/me/cards/' + card + '/transactions/' + transaction + '/commit', fields)
+        return self._post(
+            '/me/cards/' +
+            card +
+            '/transactions/' +
+            transaction +
+            '/commit',
+            fields)
 
     def cancel_txn(self, card, transaction):
         """
@@ -300,7 +323,13 @@ class Uphold(object):
           A transaction object
         """
         fields = {}
-        return self._post('/me/cards/' + card + '/transactions/' + transaction + '/cancel', fields)
+        return self._post(
+            '/me/cards/' +
+            card +
+            '/transactions/' +
+            transaction +
+            '/cancel',
+            fields)
 
     def resend_txn(self, card, transaction):
         """
@@ -314,7 +343,13 @@ class Uphold(object):
           A transaction object
         """
         fields = {}
-        return self._post('/me/cards/' + card + '/transactions/' + transaction + '/resend', fields)
+        return self._post(
+            '/me/cards/' +
+            card +
+            '/transactions/' +
+            transaction +
+            '/resend',
+            fields)
 
     def get_ticker(self, t=''):
         """
@@ -380,6 +415,7 @@ class Uphold(object):
     """
     HELPER FUNCTIONS
     """
+
     def _build_url(self, uri):
         if uri.startswith('/oauth2'):
             return uri
@@ -387,12 +423,12 @@ class Uphold(object):
 
     def _update_rate_limit(self, headers):
         if 'X-RateLimit-Limit' in headers:
-            self.limit     = headers['X-RateLimit-Limit']
+            self.limit = headers['X-RateLimit-Limit']
             self.remaining = headers['X-RateLimit-Remaining']
-            self.reset     = headers['X-RateLimit-Reset']
+            self.reset = headers['X-RateLimit-Reset']
         else:
             self.limit = self.remaining = self.reset = ""
-        
+
     def _post(self, uri, params):
         """
         """
@@ -401,19 +437,23 @@ class Uphold(object):
         try:
             if self.pat:
                 self._debug("Using PAT")
-                response = self.session.post(url, data=params, headers=self.headers, auth=(self.pat, 'X-OAuth-Basic'))
+                response = self.session.post(
+                    url, data=params, headers=self.headers, auth=(
+                        self.pat, 'X-OAuth-Basic'))
             elif self.username:
                 self._debug("Using Basic Auth")
-                self.session.auth = ( self.username, self.password )
+                self.session.auth = (self.username, self.password)
                 if self.otp:
                     self._debug("Using verification code: " + self.otp)
                     self.headers['X-Bitreserve-OTP'] = self.otp
                 self._debug(self.headers)
-                response = self.session.post(url, data=params, headers=self.headers)
+                response = self.session.post(
+                    url, data=params, headers=self.headers)
             else:
-                response = self.session.post(url, data=params, headers=self.headers)
+                response = self.session.post(
+                    url, data=params, headers=self.headers)
 
-            self._update_rate_limit( response.headers )
+            self._update_rate_limit(response.headers)
 
             if 'X-Bitreserve-OTP' in response.headers:
                 self._debug("OTP Required!")
@@ -425,7 +465,7 @@ class Uphold(object):
         except requests.exceptions.SSLError as e:
             # Handle incorrect certificate error.
             self._debug("Failed certificate check: " + str(e))
-            exit()
+            exit(1)
 
         data = json.loads(response.text)
         if 'X-Bitreserve-OTP' in self.headers:
@@ -441,10 +481,12 @@ class Uphold(object):
         try:
             if self.pat:
                 self._debug("Using PAT")
-                response = self.session.get(url, headers=self.headers, auth=(self.pat, 'X-OAuth-Basic'))
+                response = self.session.get(
+                    url, headers=self.headers, auth=(
+                        self.pat, 'X-OAuth-Basic'))
             elif self.username:
                 self._debug("Using Basic Auth")
-                self.session.auth = ( self.username, self.password )
+                self.session.auth = (self.username, self.password)
                 if self.otp:
                     self._debug("Using verification code: " + self.otp)
                     self.headers['X-Bitreserve-OTP'] = self.otp
@@ -453,7 +495,7 @@ class Uphold(object):
             else:
                 response = self.session.get(url, headers=self.headers)
 
-            self._update_rate_limit( response.headers )
+            self._update_rate_limit(response.headers)
 
             if 'X-Bitreserve-OTP' in response.headers:
                 self._debug("OTP Required!")
@@ -465,10 +507,9 @@ class Uphold(object):
         except requests.exceptions.SSLError as e:
             # Handle incorrect certificate error.
             self._debug("Failed certificate check: " + str(e))
-            exit()
+            exit(1)
 
         data = json.loads(response.text)
         if 'X-Bitreserve-OTP' in self.headers:
             del self.headers['X-Bitreserve-OTP']
         return data
-
